@@ -12,7 +12,7 @@ public interface ReservationDAO{
 
     Optional<Reservation> findById(int Id);
     List<Reservation> findAll();
-    void save(Reservation reservation);
+    Reservation save(Reservation reservation);
     void update(Reservation reservation);
     void delete(int id);
     List<Reservation> findByCustomerId(int customerId);

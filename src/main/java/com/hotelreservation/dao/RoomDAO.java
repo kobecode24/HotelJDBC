@@ -8,6 +8,9 @@ import java.util.Optional;
 
 public interface RoomDAO {
     Optional<Room> findById(int id);
+
+    List<Room> findAll();
+
     void save(Room room);
     void update(Room room);
     void delete(int id);
