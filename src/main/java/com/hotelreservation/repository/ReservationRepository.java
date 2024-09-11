@@ -54,21 +54,23 @@ public class ReservationRepository implements ReservationDAO {
     }
 
     @Override
-    public void save(Reservation reservation) {
-        String sql = "INSERT INTO reservations (customer_id, room_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)";
+    public Reservation save(Reservation reservation) {
+        String sql = "INSERT INTO reservations (customer_id, room_id, start_date, end_date, status, total_price) VALUES (?, ?, ?, ?, ?, ?) RETURNING reservation_id";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            pstmt.setInt(1, reservation.getCustomer().getCustomerId());
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, reservation.getCustomerId());
             pstmt.setInt(2, reservation.getRoomId());
             pstmt.setDate(3, Date.valueOf(reservation.getStartDate()));
             pstmt.setDate(4, Date.valueOf(reservation.getEndDate()));
             pstmt.setObject(5, reservation.getStatus().name(), Types.OTHER);
-            pstmt.executeUpdate();
+            pstmt.setDouble(6, reservation.getTotalPrice());
 
-            try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    reservation.setReservationId(generatedKeys.getInt(1));
-                }
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                reservation.setReservationId(rs.getInt(1));
+                return reservation;
+            } else {
+                throw new SQLException("Creating reservation failed, no ID obtained.");
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error saving reservation", e);
@@ -181,7 +183,7 @@ public class ReservationRepository implements ReservationDAO {
                 rs.getDate("end_date").toLocalDate(),
                 ReservationStatus.valueOf(rs.getString("status")),
                 rs.getInt("room_id"),
-                new Customer(rs.getInt("customer_id"), null, null, null) // Create a placeholder Customer
+                new Customer(rs.getInt("customer_id"), null, null, null) 
         );
     }
 }

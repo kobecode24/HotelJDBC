@@ -29,6 +29,22 @@ public class RoomRepository implements RoomDAO {
     }
 
     @Override
+    public List<Room> findAll() {
+        List<Room> rooms = new ArrayList<>();
+        String sql = "SELECT * FROM rooms";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                rooms.add(mapResultSetToRoom(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding all rooms", e);
+        }
+        return rooms;
+    }
+
+    @Override
     public void save(Room room) {
         String sql = "INSERT INTO rooms (room_type, is_available, hotel_id) VALUES (CAST(? AS room_type), ?, ?)";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
