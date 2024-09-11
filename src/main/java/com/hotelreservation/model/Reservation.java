@@ -12,6 +12,7 @@ public class Reservation {
     private LocalDate startDate;
     private LocalDate endDate;
     private ReservationStatus status;
+    private double totalPrice;
 
 
 
@@ -34,6 +35,10 @@ public class Reservation {
 
     public Customer getCustomer() {
         return customer;
+    }
+
+    public int getCustomerId() {
+        return customer.getCustomerId();
     }
 
     public void setCustomer(Customer customer) {
@@ -70,6 +75,14 @@ public class Reservation {
 
     public void setStatus(ReservationStatus status) {
         this.status = status;
+    }
+
+    public double getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(double totalPrice) {
+        this.totalPrice = totalPrice;
     }
 
     public String getReservationDetails() {
