@@ -10,7 +10,7 @@ public class DatabaseConnection {
     private static final String PASSWORD = "toor";
 
     private static DatabaseConnection instance;
-    private final Connection connection;
+    private Connection connection;
 
     private DatabaseConnection() {
         try {
@@ -27,7 +27,10 @@ public class DatabaseConnection {
         return instance;
     }
 
-    public Connection getConnection() {
+    public Connection getConnection() throws SQLException {
+        if (connection == null || connection.isClosed()) {
+            connection = DriverManager.getConnection(URL, USER, PASSWORD);
+        }
         return connection;
     }
 
