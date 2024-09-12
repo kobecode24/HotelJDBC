@@ -22,6 +22,12 @@ public class DynamicPricing implements PricingStrategy {
         this.seasonalMultipliers = new HashMap<>();
         this.eventPricing = new HashMap<>();
         loadPricingData();
+
+        if (basePrices.isEmpty()) {
+            basePrices.put(RoomType.SINGLE, 100.0);
+            basePrices.put(RoomType.DOUBLE, 150.0);
+            basePrices.put(RoomType.SUITE, 250.0);
+        }
     }
 
     private void loadPricingData() {
@@ -86,7 +92,7 @@ public class DynamicPricing implements PricingStrategy {
 
         for (int i = 0; i < nights; i++) {
             LocalDate currentDate = startDate.plusDays(i);
-            double dailyPrice = basePrices.get(roomType);
+            double dailyPrice = getBasePrice(roomType);
 
             if (isWeekend(currentDate)) {
                 dailyPrice *= WEEKEND_MULTIPLIER;
@@ -170,6 +176,10 @@ public class DynamicPricing implements PricingStrategy {
             return events.values().stream().max(Double::compare).orElse(1.0);
         }
         return 1.0;
+    }
+
+    public double getBasePrice(RoomType roomType) {
+        return basePrices.getOrDefault(roomType, 0.0);
     }
 
     public void clearSeasonalPricing() {
