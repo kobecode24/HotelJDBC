@@ -1,20 +1,18 @@
 package main.java.com.hotelreservation;
 
-
 import main.java.com.hotelreservation.model.*;
 import main.java.com.hotelreservation.model.enums.*;
 import main.java.com.hotelreservation.repository.*;
 import main.java.com.hotelreservation.service.*;
-import main.java.com.hotelreservation.util.DatabaseConnection;
 import main.java.com.hotelreservation.pricing.DynamicPricing;
 import main.java.com.hotelreservation.statistics.Statistics;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.InputMismatchException;
-import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.regex.Pattern;
 
 public class HotelManagementSystem {
     private final CustomerService customerService;
@@ -24,7 +22,6 @@ public class HotelManagementSystem {
     private final Statistics statistics;
     private final Scanner scanner;
     private final DynamicPricing pricingStrategy;
-
 
     public HotelManagementSystem() {
         CustomerRepository customerRepository = new CustomerRepository();
@@ -37,8 +34,6 @@ public class HotelManagementSystem {
         this.reservationService = new ReservationService(reservationRepository, pricingStrategy , roomRepository);
         this.roomService = new RoomService(roomRepository);
         this.hotelService = new HotelService(hotelRepository);
-
-
         this.statistics = new Statistics(reservationRepository.findAll(), roomRepository.findAll(), pricingStrategy);
         this.scanner = new Scanner(System.in);
     }
@@ -47,8 +42,7 @@ public class HotelManagementSystem {
         boolean running = true;
         while (running) {
             displayMainMenu();
-            int choice = scanner.nextInt();
-            scanner.nextLine(); // Consume newline
+            int choice = getValidIntInput("Enter your choice: ", 7);
 
             switch (choice) {
                 case 1:
@@ -73,8 +67,6 @@ public class HotelManagementSystem {
                     running = false;
                     System.out.println("Exiting the system. Goodbye!");
                     break;
-                default:
-                    System.out.println("Invalid choice. Please try again.");
             }
         }
     }
@@ -88,7 +80,6 @@ public class HotelManagementSystem {
         System.out.println("5. Statistics");
         System.out.println("6. Pricing Management");
         System.out.println("7. Exit");
-        System.out.print("Enter your choice: ");
     }
 
     private void handleCustomerOperations() {
@@ -97,10 +88,7 @@ public class HotelManagementSystem {
         System.out.println("2. Find Customer by ID");
         System.out.println("3. Update Customer");
         System.out.println("4. Delete Customer");
-        System.out.print("Enter your choice: ");
-
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int choice = getValidIntInput("Enter your choice: ", 4);
 
         switch (choice) {
             case 1:
@@ -115,32 +103,13 @@ public class HotelManagementSystem {
             case 4:
                 deleteCustomer();
                 break;
-            default:
-                System.out.println("Invalid choice.");
         }
     }
 
     private void addNewCustomer() {
-        String name, email, phone;
-
-        do {
-            System.out.print("Enter customer name: ");
-            name = scanner.nextLine().trim();
-            if (name.isEmpty()) {
-                System.out.println("Name cannot be empty. Please try again.");
-            }
-        } while (name.isEmpty());
-
-        do {
-            System.out.print("Enter customer email: ");
-            email = scanner.nextLine().trim();
-            if (!email.contains("@")) {
-                System.out.println("Please enter a valid email address.");
-            }
-        } while (!email.contains("@"));
-
-        System.out.print("Enter customer phone: ");
-        phone = scanner.nextLine().trim();
+        String name = getValidStringInput("Enter customer name: ", "Name cannot be empty.");
+        String email = getValidEmail();
+        String phone = getValidPhoneNumber();
 
         try {
             Customer customer = new Customer(0, name, email, phone);
@@ -152,8 +121,7 @@ public class HotelManagementSystem {
     }
 
     private void findCustomerById() {
-        System.out.print("Enter customer ID: ");
-        int id = scanner.nextInt();
+        int id = getValidIntInput("Enter customer ID: ", Integer.MAX_VALUE);
         Optional<Customer> customer = customerService.getCustomerById(id);
         customer.ifPresentOrElse(
                 c -> System.out.println("Customer found: " + c),
@@ -162,29 +130,19 @@ public class HotelManagementSystem {
     }
 
     private void updateCustomer() {
-        System.out.print("Enter customer ID to update: ");
-        int id = validateIntInput("Customer ID");
-        scanner.nextLine(); // Consume newline
+        int id = getValidIntInput("Enter customer ID to update: ", Integer.MAX_VALUE);
 
         Optional<Customer> optionalCustomer = customerService.getCustomerById(id);
         if (optionalCustomer.isPresent()) {
             Customer customer = optionalCustomer.get();
-            System.out.print("Enter new name (or press enter to keep current): ");
-            String name = scanner.nextLine().trim();
+
+            String name = getOptionalStringInput("Enter new name (or press enter to keep current): ");
             if (!name.isEmpty()) customer.setName(name);
 
-            String email;
-            do {
-                System.out.print("Enter new email (or press enter to keep current): ");
-                email = scanner.nextLine().trim();
-                if (!email.isEmpty() && !email.contains("@")) {
-                    System.out.println("Please enter a valid email address.");
-                }
-            } while (!email.isEmpty() && !email.contains("@"));
+            String email = getOptionalEmail();
             if (!email.isEmpty()) customer.setEmail(email);
 
-            System.out.print("Enter new phone (or press enter to keep current): ");
-            String phone = scanner.nextLine().trim();
+            String phone = getOptionalPhoneNumber();
             if (!phone.isEmpty()) customer.setPhoneNumber(phone);
 
             customerService.updateCustomer(customer);
@@ -195,8 +153,7 @@ public class HotelManagementSystem {
     }
 
     private void deleteCustomer() {
-        System.out.print("Enter customer ID to delete: ");
-        int id = scanner.nextInt();
+        int id = getValidIntInput("Enter customer ID to delete: ", Integer.MAX_VALUE);
         customerService.deleteCustomer(id);
         System.out.println("Customer deleted successfully.");
     }
@@ -207,10 +164,7 @@ public class HotelManagementSystem {
         System.out.println("2. Find Reservation by ID");
         System.out.println("3. Update Reservation");
         System.out.println("4. Cancel Reservation");
-        System.out.print("Enter your choice: ");
-
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int choice = getValidIntInput("Enter your choice: ", 4);
 
         switch (choice) {
             case 1:
@@ -225,42 +179,15 @@ public class HotelManagementSystem {
             case 4:
                 cancelReservation();
                 break;
-            default:
-                System.out.println("Invalid choice.");
         }
     }
 
     private void makeNewReservation() {
-        System.out.print("Enter customer ID: ");
-        int customerId = validateIntInput("Customer ID");
-        System.out.print("Enter room ID: ");
-        int roomId = validateIntInput("Room ID");
-        scanner.nextLine();
+        int customerId = getValidIntInput("Enter customer ID: ", Integer.MAX_VALUE);
+        int roomId = getValidIntInput("Enter room ID: ", Integer.MAX_VALUE);
 
-        LocalDate startDate = null;
-        while (startDate == null) {
-            System.out.print("Enter start date (YYYY-MM-DD): ");
-            String startDateStr = scanner.nextLine();
-            try {
-                startDate = LocalDate.parse(startDateStr);
-            } catch (DateTimeParseException e) {
-                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
-            }
-        }
-
-        LocalDate endDate = null;
-        while (endDate == null || !endDate.isAfter(startDate)) {
-            System.out.print("Enter end date (YYYY-MM-DD): ");
-            String endDateStr = scanner.nextLine();
-            try {
-                endDate = LocalDate.parse(endDateStr);
-                if (!endDate.isAfter(startDate)) {
-                    System.out.println("End date must be after start date.");
-                }
-            } catch (DateTimeParseException e) {
-                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
-            }
-        }
+        LocalDate startDate = getValidFutureDate("Enter start date (YYYY-MM-DD): ");
+        LocalDate endDate = getValidEndDate(startDate);
 
         Optional<Customer> customer = customerService.getCustomerById(customerId);
         Optional<Room> room = roomService.getRoomById(roomId);
@@ -280,8 +207,7 @@ public class HotelManagementSystem {
     }
 
     private void findReservationById() {
-        System.out.print("Enter reservation ID: ");
-        int id = validateIntInput("Reservation ID");
+        int id = getValidIntInput("Enter reservation ID: ", Integer.MAX_VALUE);
         Optional<Reservation> reservation = reservationService.getReservationById(id);
         reservation.ifPresentOrElse(
                 r -> System.out.println("Reservation found: " + r),
@@ -290,24 +216,20 @@ public class HotelManagementSystem {
     }
 
     private void updateReservation() {
-        System.out.print("Enter reservation ID to update: ");
-        int id = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int id = getValidIntInput("Enter reservation ID to update: ", Integer.MAX_VALUE);
 
         Optional<Reservation> optionalReservation = reservationService.getReservationById(id);
         if (optionalReservation.isPresent()) {
             Reservation reservation = optionalReservation.get();
-            System.out.print("Enter new start date (YYYY-MM-DD) or press enter to keep current: ");
-            String startDateStr = scanner.nextLine();
-            if (!startDateStr.isEmpty()) reservation.setStartDate(LocalDate.parse(startDateStr));
 
-            System.out.print("Enter new end date (YYYY-MM-DD) or press enter to keep current: ");
-            String endDateStr = scanner.nextLine();
-            if (!endDateStr.isEmpty()) reservation.setEndDate(LocalDate.parse(endDateStr));
+            LocalDate startDate = getOptionalFutureDate("Enter new start date (YYYY-MM-DD) or press enter to keep current: ");
+            if (startDate != null) reservation.setStartDate(startDate);
 
-            System.out.print("Enter new status (CONFIRMED/CANCELLED) or press enter to keep current: ");
-            String statusStr = scanner.nextLine();
-            if (!statusStr.isEmpty()) reservation.setStatus(ReservationStatus.valueOf(statusStr.toUpperCase()));
+            LocalDate endDate = getOptionalEndDate(reservation.getStartDate(), "Enter new end date (YYYY-MM-DD) or press enter to keep current: ");
+            if (endDate != null) reservation.setEndDate(endDate);
+
+            ReservationStatus status = getOptionalReservationStatus("Enter new status (CONFIRMED/CANCELLED) or press enter to keep current: ");
+            if (status != null) reservation.setStatus(status);
 
             reservationService.updateReservation(reservation);
             System.out.println("Reservation updated successfully.");
@@ -317,8 +239,7 @@ public class HotelManagementSystem {
     }
 
     private void cancelReservation() {
-        System.out.print("Enter reservation ID to cancel: ");
-        int id = scanner.nextInt();
+        int id = getValidIntInput("Enter reservation ID to cancel: ", Integer.MAX_VALUE);
         try {
             reservationService.cancelReservation(id);
             System.out.println("Reservation cancelled successfully.");
@@ -333,10 +254,7 @@ public class HotelManagementSystem {
         System.out.println("2. Find Room by ID");
         System.out.println("3. Update Room");
         System.out.println("4. Delete Room");
-        System.out.print("Enter your choice: ");
-
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int choice = getValidIntInput("Enter your choice: ", 4);
 
         switch (choice) {
             case 1:
@@ -351,38 +269,13 @@ public class HotelManagementSystem {
             case 4:
                 deleteRoom();
                 break;
-            default:
-                System.out.println("Invalid choice.");
         }
     }
 
     private void addNewRoom() {
-        System.out.print("Enter hotel ID: ");
-        int hotelId = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
-
-        RoomType roomType = null;
-        while (roomType == null) {
-            System.out.print("Enter room type (SINGLE/DOUBLE/SUITE): ");
-            String roomTypeInput = scanner.nextLine().toUpperCase();
-            try {
-                roomType = RoomType.valueOf(roomTypeInput);
-            } catch (IllegalArgumentException e) {
-                System.out.println("Invalid room type. Please enter SINGLE, DOUBLE, or SUITE.");
-            }
-        }
-
-        boolean isAvailable = false;
-        while (true) {
-            System.out.print("Is room available? (true/false): ");
-            String availableInput = scanner.nextLine().toLowerCase();
-            if (availableInput.equals("true") || availableInput.equals("false")) {
-                isAvailable = Boolean.parseBoolean(availableInput);
-                break;
-            } else {
-                System.out.println("Invalid input. Please enter true or false.");
-            }
-        }
+        int hotelId = getValidIntInput("Enter hotel ID: ", Integer.MAX_VALUE);
+        RoomType roomType = getValidRoomType();
+        boolean isAvailable = getValidBoolean("Is room available? (true/false): ");
 
         try {
             Room room = new Room(0, roomType, isAvailable, hotelId);
@@ -394,8 +287,7 @@ public class HotelManagementSystem {
     }
 
     private void findRoomById() {
-        System.out.print("Enter room ID: ");
-        int id = scanner.nextInt();
+        int id = getValidIntInput("Enter room ID: ", Integer.MAX_VALUE);
         Optional<Room> room = roomService.getRoomById(id);
         room.ifPresentOrElse(
                 r -> System.out.println("Room found: " + r),
@@ -404,20 +296,17 @@ public class HotelManagementSystem {
     }
 
     private void updateRoom() {
-        System.out.print("Enter room ID to update: ");
-        int id = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int id = getValidIntInput("Enter room ID to update: ", Integer.MAX_VALUE);
 
         Optional<Room> optionalRoom = roomService.getRoomById(id);
         if (optionalRoom.isPresent()) {
             Room room = optionalRoom.get();
-            System.out.print("Enter new room type (SINGLE/DOUBLE/SUITE) or press enter to keep current: ");
-            String roomTypeStr = scanner.nextLine();
-            if (!roomTypeStr.isEmpty()) room.setRoomType(RoomType.valueOf(roomTypeStr.toUpperCase()));
 
-            System.out.print("Is room available? (true/false) or press enter to keep current: ");
-            String availableStr = scanner.nextLine();
-            if (!availableStr.isEmpty()) room.setAvailable(Boolean.parseBoolean(availableStr));
+            RoomType roomType = getOptionalRoomType("Enter new room type (SINGLE/DOUBLE/SUITE) or press enter to keep current: ");
+            if (roomType != null) room.setRoomType(roomType);
+
+            Boolean isAvailable = getOptionalBoolean("Is room available? (true/false) or press enter to keep current: ");
+            if (isAvailable != null) room.setAvailable(isAvailable);
 
             roomService.updateRoom(room);
             System.out.println("Room updated successfully.");
@@ -427,8 +316,7 @@ public class HotelManagementSystem {
     }
 
     private void deleteRoom() {
-        System.out.print("Enter room ID to delete: ");
-        int id = scanner.nextInt();
+        int id = getValidIntInput("Enter room ID to delete: ", Integer.MAX_VALUE);
         roomService.deleteRoom(id);
         System.out.println("Room deleted successfully.");
     }
@@ -439,10 +327,7 @@ public class HotelManagementSystem {
         System.out.println("2. Find Hotel by ID");
         System.out.println("3. Update Hotel");
         System.out.println("4. Delete Hotel");
-        System.out.print("Enter your choice: ");
-
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int choice = getValidIntInput("Enter your choice: ", 4);
 
         switch (choice) {
             case 1:
@@ -457,16 +342,12 @@ public class HotelManagementSystem {
             case 4:
                 deleteHotel();
                 break;
-            default:
-                System.out.println("Invalid choice.");
         }
     }
 
     private void addNewHotel() {
-        System.out.print("Enter hotel name: ");
-        String name = scanner.nextLine();
-        System.out.print("Enter hotel address: ");
-        String address = scanner.nextLine();
+        String name = getValidStringInput("Enter hotel name: ", "Hotel name cannot be empty.");
+        String address = getValidStringInput("Enter hotel address: ", "Hotel address cannot be empty.");
 
         Hotel hotel = new Hotel(0, name, address);
         Hotel createdHotel = hotelService.createHotel(hotel);
@@ -474,8 +355,7 @@ public class HotelManagementSystem {
     }
 
     private void findHotelById() {
-        System.out.print("Enter hotel ID: ");
-        int id = scanner.nextInt();
+        int id = getValidIntInput("Enter hotel ID: ", Integer.MAX_VALUE);
         Optional<Hotel> hotel = hotelService.getHotelById(id);
         hotel.ifPresentOrElse(
                 h -> System.out.println("Hotel found: " + h),
@@ -484,19 +364,16 @@ public class HotelManagementSystem {
     }
 
     private void updateHotel() {
-        System.out.print("Enter hotel ID to update: ");
-        int id = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int id = getValidIntInput("Enter hotel ID to update: ", Integer.MAX_VALUE);
 
         Optional<Hotel> optionalHotel = hotelService.getHotelById(id);
         if (optionalHotel.isPresent()) {
             Hotel hotel = optionalHotel.get();
-            System.out.print("Enter new name (or press enter to keep current): ");
-            String name = scanner.nextLine();
+
+            String name = getOptionalStringInput("Enter new name (or press enter to keep current): ");
             if (!name.isEmpty()) hotel.setName(name);
 
-            System.out.print("Enter new address (or press enter to keep current): ");
-            String address = scanner.nextLine();
+            String address = getOptionalStringInput("Enter new address (or press enter to keep current): ");
             if (!address.isEmpty()) hotel.setAddress(address);
 
             hotelService.updateHotel(hotel);
@@ -507,8 +384,7 @@ public class HotelManagementSystem {
     }
 
     private void deleteHotel() {
-        System.out.print("Enter hotel ID to delete: ");
-        int id = scanner.nextInt();
+        int id = getValidIntInput("Enter hotel ID to delete: ", Integer.MAX_VALUE);
         hotelService.deleteHotel(id);
         System.out.println("Hotel deleted successfully.");
     }
@@ -521,10 +397,7 @@ public class HotelManagementSystem {
         System.out.println("4. Custom Date Range Report");
         System.out.println("5. Room Type Performance Report");
         System.out.println("6. Back to Main Menu");
-        System.out.print("Enter your choice: ");
-
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int choice = getValidIntInput("Enter your choice: ", 6);
 
         switch (choice) {
             case 1:
@@ -544,18 +417,7 @@ public class HotelManagementSystem {
                 break;
             case 6:
                 return;
-            default:
-                System.out.println("Invalid choice.");
         }
-    }
-
-    private void generateCustomDateRangeReport() {
-        LocalDate startDate = getDateInput("Enter start date (YYYY-MM-DD): ");
-        LocalDate endDate = getDateInput("Enter end date (YYYY-MM-DD): ");
-
-        System.out.println("Custom Date Range Report (" + startDate + " to " + endDate + ")");
-        System.out.println("Revenue: $" + statistics.calculateRevenue(startDate, endDate));
-        System.out.println("Cancellations: " + statistics.calculateCancellations(startDate, endDate));
     }
 
     private void generateRevenueReport() {
@@ -564,10 +426,7 @@ public class HotelManagementSystem {
         System.out.println("2. Last Quarter");
         System.out.println("3. Last Year");
         System.out.println("4. Custom Date Range");
-        System.out.print("Enter your choice: ");
-
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int choice = getValidIntInput("Enter your choice: ", 4);
 
         LocalDate endDate = LocalDate.now();
         LocalDate startDate;
@@ -583,8 +442,8 @@ public class HotelManagementSystem {
                 startDate = endDate.minusYears(1);
                 break;
             case 4:
-                startDate = getDateInput("Enter start date (YYYY-MM-DD): ");
-                endDate = getDateInput("Enter end date (YYYY-MM-DD): ");
+                startDate = getValidPastDate("Enter start date (YYYY-MM-DD): ");
+                endDate = getValidEndDate(startDate);
                 break;
             default:
                 System.out.println("Invalid choice. Using last month as default.");
@@ -594,36 +453,21 @@ public class HotelManagementSystem {
         System.out.println(statistics.generateRevenueReport(startDate, endDate));
     }
 
-    /*private void generateCustomDateRangeReport() {
-        LocalDate startDate = getDateInput("Enter start date (YYYY-MM-DD): ");
-        LocalDate endDate = getDateInput("Enter end date (YYYY-MM-DD): ");
+    private void generateCustomDateRangeReport() {
+        LocalDate startDate = getValidPastDate("Enter start date (YYYY-MM-DD): ");
+        LocalDate endDate = getValidEndDate(startDate);
 
         System.out.println("Custom Date Range Report (" + startDate + " to " + endDate + ")");
-        System.out.println("Occupancy: " + statistics.calculateOccupancy(startDate, endDate));
         System.out.println("Revenue: $" + statistics.calculateRevenue(startDate, endDate));
         System.out.println("Cancellations: " + statistics.calculateCancellations(startDate, endDate));
-    }*/
+    }
 
     private void generateRoomTypePerformanceReport() {
-        LocalDate startDate = getDateInput("Enter start date (YYYY-MM-DD): ");
-        LocalDate endDate = getDateInput("Enter end date (YYYY-MM-DD): ");
+        LocalDate startDate = getValidPastDate("Enter start date (YYYY-MM-DD): ");
+        LocalDate endDate = getValidEndDate(startDate);
 
         System.out.println("Room Type Performance Report (" + startDate + " to " + endDate + ")");
         System.out.println(statistics.generateRoomTypePerformanceReport(startDate, endDate));
-    }
-
-    private LocalDate getDateInput(String prompt) {
-        LocalDate date = null;
-        while (date == null) {
-            System.out.print(prompt);
-            String dateStr = scanner.nextLine();
-            try {
-                date = LocalDate.parse(dateStr);
-            } catch (DateTimeParseException e) {
-                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
-            }
-        }
-        return date;
     }
 
     private void handlePricingManagement() {
@@ -632,10 +476,7 @@ public class HotelManagementSystem {
         System.out.println("2. Set Seasonal Pricing");
         System.out.println("3. Set Event Pricing");
         System.out.println("4. View Current Pricing");
-        System.out.print("Enter your choice: ");
-
-        int choice = scanner.nextInt();
-        scanner.nextLine();
+        int choice = getValidIntInput("Enter your choice: ", 4);
 
         switch (choice) {
             case 1:
@@ -650,38 +491,28 @@ public class HotelManagementSystem {
             case 4:
                 viewCurrentPricing();
                 break;
-            default:
-                System.out.println("Invalid choice.");
         }
     }
 
     private void updateBasePrice() {
-        System.out.println("Enter room type (SINGLE/DOUBLE/SUITE): ");
-        RoomType roomType = RoomType.valueOf(scanner.nextLine().toUpperCase());
-        System.out.println("Enter new base price: ");
-        double newPrice = scanner.nextDouble();
+        RoomType roomType = getValidRoomType();
+        double newPrice = getValidDoubleInput("Enter new base price: ", 0, Double.MAX_VALUE);
         pricingStrategy.updateBasePrice(roomType, newPrice);
         System.out.println("Base price updated successfully.");
     }
 
     private void setSeasonalPricing() {
-        System.out.println("Enter start date (YYYY-MM-DD): ");
-        LocalDate startDate = LocalDate.parse(scanner.nextLine());
-        System.out.println("Enter end date (YYYY-MM-DD): ");
-        LocalDate endDate = LocalDate.parse(scanner.nextLine());
-        System.out.println("Enter price multiplier: ");
-        double multiplier = scanner.nextDouble();
+        LocalDate startDate = getValidFutureDate("Enter start date (YYYY-MM-DD): ");
+        LocalDate endDate = getValidEndDate(startDate);
+        double multiplier = getValidDoubleInput("Enter price multiplier: ", 0, Double.MAX_VALUE);
         pricingStrategy.setSeasonalMultiplier(startDate, endDate, multiplier);
         System.out.println("Seasonal pricing set successfully.");
     }
 
     private void setEventPricing() {
-        System.out.println("Enter event date (YYYY-MM-DD): ");
-        LocalDate eventDate = LocalDate.parse(scanner.nextLine());
-        System.out.println("Enter event name: ");
-        String eventName = scanner.nextLine();
-        System.out.println("Enter price multiplier: ");
-        double multiplier = scanner.nextDouble();
+        LocalDate eventDate = getValidFutureDate("Enter event date (YYYY-MM-DD): ");
+        String eventName = getValidStringInput("Enter event name: ", "Event name cannot be empty.");
+        double multiplier = getValidDoubleInput("Enter price multiplier: ", 0, Double.MAX_VALUE);
         pricingStrategy.setEventPricing(eventDate, eventName, multiplier);
         System.out.println("Event pricing set successfully.");
     }
@@ -701,26 +532,260 @@ public class HotelManagementSystem {
                         System.out.println(entry.getKey() + " - " + event + ": x" + multiplier)));
     }
 
-
-    private int validateIntInput(String fieldName) {
+    private int getValidIntInput(String prompt, int max) {
         while (true) {
             try {
-                return scanner.nextInt();
+                System.out.print(prompt);
+                int input = scanner.nextInt();
+                scanner.nextLine(); // Consume newline
+                if (input >= 1 && input <= max) {
+                    return input;
+                } else {
+                    System.out.println("Please enter a number between " + 1 + " and " + max + ".");
+                }
             } catch (InputMismatchException e) {
-                System.out.println("Invalid input. Please enter a valid number for " + fieldName + ".");
-                scanner.next();
+                System.out.println("Invalid input. Please enter a valid number.");
+                scanner.nextLine();
             }
         }
     }
 
-    private LocalDate getOptionalDateInput(String prompt) {
+    private double getValidDoubleInput(String prompt, double min, double max) {
+        while (true) {
+            try {
+                System.out.print(prompt);
+                double input = scanner.nextDouble();
+                scanner.nextLine(); // Consume newline
+                if (input >= min && input <= max) {
+                    return input;
+                } else {
+                    System.out.println("Please enter a number between " + min + " and " + max + ".");
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input. Please enter a valid number.");
+                scanner.nextLine(); // Consume invalid input
+            }
+        }
+    }
+
+    private String getValidStringInput(String prompt, String errorMessage) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().trim();
+            if (!input.isEmpty()) {
+                return input;
+            } else {
+                System.out.println(errorMessage);
+            }
+        }
+    }
+
+    private String getOptionalStringInput(String prompt) {
         System.out.print(prompt);
-        String dateStr = scanner.nextLine().trim();
-        if (dateStr.isEmpty()) {
+        return scanner.nextLine().trim();
+    }
+
+    private String getValidEmail() {
+        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
+        Pattern pattern = Pattern.compile(emailRegex);
+        while (true) {
+            System.out.print("Enter email address: ");
+            String email = scanner.nextLine().trim();
+            if (pattern.matcher(email).matches()) {
+                return email;
+            } else {
+                System.out.println("Invalid email format. Please try again.");
+            }
+        }
+    }
+
+    private String getOptionalEmail() {
+        String email = getOptionalStringInput("Enter new email (or press enter to keep current): ");
+        if (!email.isEmpty() && !email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            System.out.println("Invalid email format. Keeping current email.");
+            return "";
+        }
+        return email;
+    }
+
+    private String getValidPhoneNumber() {
+        String phoneRegex = "^\\+?\\d{10,14}$";
+        Pattern pattern = Pattern.compile(phoneRegex);
+        while (true) {
+            System.out.print("Enter phone number: ");
+            String phone = scanner.nextLine().trim();
+            if (pattern.matcher(phone).matches()) {
+                return phone;
+            } else {
+                System.out.println("Invalid phone number format. Please try again.");
+            }
+        }
+    }
+
+    private String getOptionalPhoneNumber() {
+        String phone = getOptionalStringInput("Enter new phone number (or press enter to keep current): ");
+        if (!phone.isEmpty() && !phone.matches("^\\+?\\d{10,14}$")) {
+            System.out.println("Invalid phone number format. Keeping current phone number.");
+            return "";
+        }
+        return phone;
+    }
+
+    private LocalDate getValidFutureDate(String prompt) {
+        while (true) {
+            try {
+                System.out.print(prompt);
+                String dateStr = scanner.nextLine();
+                LocalDate date = LocalDate.parse(dateStr);
+                if (date.isAfter(LocalDate.now())) {
+                    return date;
+                } else {
+                    System.out.println("Please enter a future date.");
+                }
+            } catch (DateTimeParseException e) {
+                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
+            }
+        }
+    }
+
+    private LocalDate getValidPastDate(String prompt) {
+        while (true) {
+            try {
+                System.out.print(prompt);
+                String dateStr = scanner.nextLine();
+                LocalDate date = LocalDate.parse(dateStr);
+                if (date.isBefore(LocalDate.now()) || date.isEqual(LocalDate.now())) {
+                    return date;
+                } else {
+                    System.out.println("Please enter a past or current date.");
+                }
+            } catch (DateTimeParseException e) {
+                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
+            }
+        }
+    }
+
+    private LocalDate getValidEndDate(LocalDate startDate) {
+        while (true) {
+            try {
+                System.out.print("Enter end date (YYYY-MM-DD): ");
+                String dateStr = scanner.nextLine();
+                LocalDate endDate = LocalDate.parse(dateStr);
+                if (endDate.isAfter(startDate)) {
+                    return endDate;
+                } else {
+                    System.out.println("End date must be after start date.");
+                }
+            } catch (DateTimeParseException e) {
+                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
+            }
+        }
+    }
+
+    private LocalDate getOptionalFutureDate(String prompt) {
+        while (true) {
+            try {
+                System.out.print(prompt);
+                String dateStr = scanner.nextLine().trim();
+                if (dateStr.isEmpty()) {
+                    return null;
+                }
+                LocalDate date = LocalDate.parse(dateStr);
+                if (date.isAfter(LocalDate.now())) {
+                    return date;
+                } else {
+                    System.out.println("Please enter a future date.");
+                }
+            } catch (DateTimeParseException e) {
+                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
+            }
+        }
+    }
+
+    private LocalDate getOptionalEndDate(LocalDate startDate, String prompt) {
+        while (true) {
+            try {
+                System.out.print(prompt);
+                String dateStr = scanner.nextLine().trim();
+                if (dateStr.isEmpty()) {
+                    return null;
+                }
+                LocalDate endDate = LocalDate.parse(dateStr);
+                if (endDate.isAfter(startDate)) {
+                    return endDate;
+                } else {
+                    System.out.println("End date must be after start date.");
+                }
+            } catch (DateTimeParseException e) {
+                System.out.println("Invalid date format. Please use YYYY-MM-DD.");
+            }
+        }
+    }
+
+    private boolean getValidBoolean(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().toLowerCase().trim();
+            if (input.equals("true") || input.equals("false")) {
+                return Boolean.parseBoolean(input);
+            } else {
+                System.out.println("Invalid input. Please enter true or false.");
+            }
+        }
+    }
+
+    private Boolean getOptionalBoolean(String prompt) {
+        System.out.print(prompt);
+        String input = scanner.nextLine().toLowerCase().trim();
+        if (input.isEmpty()) {
+            return null;
+        } else if (input.equals("true") || input.equals("false")) {
+            return Boolean.parseBoolean(input);
+        } else {
+            System.out.println("Invalid input. Keeping current value.");
             return null;
         }
-        return getDateInput(prompt);
     }
+
+    private RoomType getValidRoomType() {
+        while (true) {
+            try {
+                System.out.print("Enter room type (SINGLE/DOUBLE/SUITE): ");
+                return RoomType.valueOf(scanner.nextLine().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid room type. Please enter SINGLE, DOUBLE, or SUITE.");
+            }
+        }
+    }
+
+    private RoomType getOptionalRoomType(String prompt) {
+        System.out.print(prompt);
+        String input = scanner.nextLine().toUpperCase().trim();
+        if (input.isEmpty()) {
+            return null;
+        }
+        try {
+            return RoomType.valueOf(input);
+        } catch (IllegalArgumentException e) {
+            System.out.println("Invalid room type. Keeping current type.");
+            return null;
+        }
+    }
+
+    private ReservationStatus getOptionalReservationStatus(String prompt) {
+        System.out.print(prompt);
+        String input = scanner.nextLine().toUpperCase().trim();
+        if (input.isEmpty()) {
+            return null;
+        }
+        try {
+            return ReservationStatus.valueOf(input);
+        } catch (IllegalArgumentException e) {
+            System.out.println("Invalid reservation status. Keeping current status.");
+            return null;
+        }
+    }
+
     public static void main(String[] args) {
         HotelManagementSystem system = new HotelManagementSystem();
         system.run();
