@@ -30,6 +30,44 @@ public class DynamicPricing implements PricingStrategy {
         }
     }
 
+    public static class DateRange {
+        private LocalDate startDate;
+        private LocalDate endDate;
+
+        public DateRange(LocalDate startDate, LocalDate endDate) {
+            this.startDate = startDate;
+            this.endDate = endDate;
+        }
+
+        public LocalDate getStartDate() { return startDate; }
+        public LocalDate getEndDate() { return endDate; }
+
+        @Override
+        public String toString() {
+            return startDate + " to " + endDate;
+        }
+    }
+
+    private List<Map.Entry<DateRange, Double>> groupConsecutiveDates(List<Map.Entry<LocalDate, Double>> sortedEntries) {
+        List<Map.Entry<DateRange, Double>> groupedEntries = new ArrayList<>();
+        if (sortedEntries.isEmpty()) return groupedEntries;
+
+        LocalDate startDate = sortedEntries.getFirst().getKey();
+        double currentMultiplier = sortedEntries.getFirst().getValue();
+
+        for (int i = 1; i < sortedEntries.size(); i++) {
+            Map.Entry<LocalDate, Double> entry = sortedEntries.get(i);
+            if (!entry.getKey().minusDays(1).equals(sortedEntries.get(i-1).getKey()) || !entry.getValue().equals(currentMultiplier)) {
+                groupedEntries.add(new AbstractMap.SimpleEntry<>(new DateRange(startDate, sortedEntries.get(i-1).getKey()), currentMultiplier));
+                startDate = entry.getKey();
+                currentMultiplier = entry.getValue();
+            }
+        }
+
+        groupedEntries.add(new AbstractMap.SimpleEntry<>(new DateRange(startDate, sortedEntries.get(sortedEntries.size()-1).getKey()), currentMultiplier));
+        return groupedEntries;
+    }
+
     private void loadPricingData() {
         loadBasePrices();
         loadSeasonalMultipliers();
@@ -86,7 +124,7 @@ public class DynamicPricing implements PricingStrategy {
     }
 
     @Override
-    public double calculatePrice(LocalDate startDate, LocalDate endDate, RoomType roomType) {
+    public double calculatePrice(LocalDate startDate, LocalDate endDate, RoomType roomType , double occupancyRate) {
         long nights = ChronoUnit.DAYS.between(startDate, endDate);
         double totalPrice = 0.0;
 
@@ -100,6 +138,9 @@ public class DynamicPricing implements PricingStrategy {
 
             dailyPrice *= getSeasonalMultiplier(currentDate);
             dailyPrice *= getEventMultiplier(currentDate);
+
+            double occupancyDiscount = getOccupancyBasedDiscount(occupancyRate);
+            dailyPrice *= (1 - occupancyDiscount);
 
             totalPrice += dailyPrice;
         }
@@ -155,10 +196,12 @@ public class DynamicPricing implements PricingStrategy {
 
     @Override
     public double getOccupancyBasedDiscount(double occupancyRate) {
-        if (occupancyRate < 0.5) {
-            return DEFAULT_OCCUPANCY_DISCOUNT;
+        if (occupancyRate < 0.3) {
+            return 0.2; // 20% discount for very low occupancy
+        } else if (occupancyRate < 0.5) {
+            return 0.1; // 10% discount for moderately low occupancy
         }
-        return 0;
+        return 0; // No discount for occupancy 50% or higher
     }
 
     private boolean isWeekend(LocalDate date) {
@@ -208,10 +251,10 @@ public class DynamicPricing implements PricingStrategy {
         return new EnumMap<>(basePrices);
     }
 
-    public List<Map.Entry<LocalDate, Double>> getSeasonalPricingInfo() {
-        List<Map.Entry<LocalDate, Double>> info = new ArrayList<>(seasonalMultipliers.entrySet());
-        info.sort(Map.Entry.comparingByKey());
-        return info;
+    public List<Map.Entry<DateRange, Double>> getSeasonalPricingInfo() {
+        List<Map.Entry<LocalDate, Double>> sortedEntries = new ArrayList<>(seasonalMultipliers.entrySet());
+        sortedEntries.sort(Map.Entry.comparingByKey());
+        return groupConsecutiveDates(sortedEntries);
     }
 
     public List<Map.Entry<LocalDate, Map<String, Double>>> getEventPricingInfo() {

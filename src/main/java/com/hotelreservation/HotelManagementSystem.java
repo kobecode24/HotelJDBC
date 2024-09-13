@@ -88,7 +88,8 @@ public class HotelManagementSystem {
         System.out.println("2. Find Customer by ID");
         System.out.println("3. Update Customer");
         System.out.println("4. Delete Customer");
-        int choice = getValidIntInput("Enter your choice: ", 4);
+        System.out.println("5. Return to Main Menu");
+        int choice = getValidIntInput("Enter your choice: ", 5);
 
         switch (choice) {
             case 1:
@@ -103,6 +104,8 @@ public class HotelManagementSystem {
             case 4:
                 deleteCustomer();
                 break;
+            case 5:
+                return;
         }
     }
 
@@ -164,7 +167,8 @@ public class HotelManagementSystem {
         System.out.println("2. Find Reservation by ID");
         System.out.println("3. Update Reservation");
         System.out.println("4. Cancel Reservation");
-        int choice = getValidIntInput("Enter your choice: ", 4);
+        System.out.println("5. Return to Main Menu");
+        int choice = getValidIntInput("Enter your choice: ", 5);
 
         switch (choice) {
             case 1:
@@ -179,6 +183,8 @@ public class HotelManagementSystem {
             case 4:
                 cancelReservation();
                 break;
+            case 5:
+                return;
         }
     }
 
@@ -327,7 +333,8 @@ public class HotelManagementSystem {
         System.out.println("2. Find Hotel by ID");
         System.out.println("3. Update Hotel");
         System.out.println("4. Delete Hotel");
-        int choice = getValidIntInput("Enter your choice: ", 4);
+        System.out.println("5. Return to Main Menu");
+        int choice = getValidIntInput("Enter your choice: ", 5);
 
         switch (choice) {
             case 1:
@@ -342,6 +349,8 @@ public class HotelManagementSystem {
             case 4:
                 deleteHotel();
                 break;
+            case 5:
+                return;
         }
     }
 
@@ -476,7 +485,8 @@ public class HotelManagementSystem {
         System.out.println("2. Set Seasonal Pricing");
         System.out.println("3. Set Event Pricing");
         System.out.println("4. View Current Pricing");
-        int choice = getValidIntInput("Enter your choice: ", 4);
+        System.out.println("5. Back to Main Menu");
+        int choice = getValidIntInput("Enter your choice: ", 5);
 
         switch (choice) {
             case 1:
@@ -491,6 +501,8 @@ public class HotelManagementSystem {
             case 4:
                 viewCurrentPricing();
                 break;
+            case 5:
+                return;
         }
     }
 
@@ -537,7 +549,7 @@ public class HotelManagementSystem {
             try {
                 System.out.print(prompt);
                 int input = scanner.nextInt();
-                scanner.nextLine(); // Consume newline
+                scanner.nextLine();
                 if (input >= 1 && input <= max) {
                     return input;
                 } else {

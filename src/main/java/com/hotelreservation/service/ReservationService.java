@@ -26,10 +26,12 @@ public class ReservationService {
     public Reservation createReservation(Reservation reservation) {
         Optional<Room> room = roomRepository.findById(reservation.getRoomId());
         if (room.isPresent()) {
+            double occupancyRate = calculateOccupancyRate(reservation.getStartDate(), reservation.getEndDate());
             double price = pricingStrategy.calculatePrice(
                     reservation.getStartDate(),
                     reservation.getEndDate(),
-                    room.get().getRoomType()
+                    room.get().getRoomType(),
+                    occupancyRate
             );
             reservation.setTotalPrice(price);
             return reservationRepository.save(reservation);
@@ -38,6 +40,14 @@ public class ReservationService {
         }
     }
 
+    private double calculateOccupancyRate(LocalDate startDate, LocalDate endDate) {
+        long totalRooms = roomRepository.findAll().size();
+        long occupiedRooms = reservationRepository.findByDateRange(startDate, endDate)
+                .stream()
+                .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED)
+                .count();
+        return (double) occupiedRooms / totalRooms;
+    }
     public Optional<Reservation> getReservationById(int id) {
         return reservationRepository.findById(id);
     }

@@ -192,7 +192,8 @@ public class Statistics {
         RoomType roomType = getRoomType(reservation);
 
         for (LocalDate date = overlapStart; !date.isAfter(overlapEnd); date = date.plusDays(1)) {
-            double dailyPrice = pricingStrategy.calculatePrice(date, date.plusDays(1), roomType);
+            double occupancyRate = calculateOccupancyRate(date);
+            double dailyPrice = pricingStrategy.calculatePrice(date, date.plusDays(1), roomType, occupancyRate);
             totalRevenue += dailyPrice;
         }
 
@@ -205,5 +206,14 @@ public class Statistics {
                 .findFirst()
                 .map(Room::getRoomType)
                 .orElseThrow(() -> new IllegalStateException("Room not found for reservation"));
+    }
+
+    private double calculateOccupancyRate(LocalDate date) {
+        long totalRooms = rooms.size();
+        long occupiedRooms = reservations.stream()
+                .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED)
+                .filter(r -> !date.isBefore(r.getStartDate()) && !date.isAfter(r.getEndDate()))
+                .count();
+        return (double) occupiedRooms / totalRooms;
     }
 }
